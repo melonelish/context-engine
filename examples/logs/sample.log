@@ -1,0 +1,17 @@
+2026-07-03 09:00:01 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:02 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:03 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:04 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:05 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:06 INFO fetch profile_id=8842 source=github attempt=1
+2026-07-03 09:00:06 INFO fetch profile_id=8842 source=github attempt=1
+2026-07-03 09:00:07 WARNING parser markdown section missing heading level=2
+2026-07-03 09:00:08 ERROR resume pipeline failed profile_id=8842 stage=extract
+Traceback (most recent call last):
+  File "/app/pipeline.py", line 118, in run
+    normalized = normalize_resume(payload)
+  File "/app/parsers.py", line 42, in normalize_resume
+    raise ValueError("email field missing '@' separator")
+ValueError: email field missing '@' separator
+2026-07-03 09:00:09 INFO worker poll queue=resume-sync status=empty
+2026-07-03 09:00:10 INFO worker poll queue=resume-sync status=empty

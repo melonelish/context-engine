@@ -1,0 +1,23 @@
+{
+  "question": "What caused the login timeout for enterprise users?",
+  "chunks": [
+    {
+      "content": "The 2026-07-02 incident review shows the login timeout came from a Redis connection pool exhaustion after enterprise SSO traffic spiked.",
+      "source": "incident-review.md",
+      "score": 0.97,
+      "priority": 8
+    },
+    {
+      "content": "Mitigation notes: increase redis pool size from 40 to 120 and add queue backpressure before token validation.",
+      "source": "mitigation-notes.md",
+      "score": 0.88,
+      "priority": 7
+    },
+    {
+      "content": "The dashboard query for monthly active users was updated to filter deleted tenants.",
+      "source": "analytics-changelog.md",
+      "score": 0.12,
+      "priority": 1
+    }
+  ]
+}

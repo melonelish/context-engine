@@ -1,0 +1,24 @@
+{
+  "issue": "Fix failing resume normalization flow when an email field is malformed.",
+  "test_output": "ValueError: email field missing '@' separator\nAssertionError: pipeline should convert malformed emails into validation warnings",
+  "files": [
+    {
+      "path": "src/parsers.py",
+      "symbol": "normalize_resume",
+      "content": "def normalize_resume(payload):\n    email = payload['email'].strip()\n    if '@' not in email:\n        raise ValueError(\"email field missing '@' separator\")\n    return {'email': email.lower()}\n",
+      "priority": 10
+    },
+    {
+      "path": "src/pipeline.py",
+      "symbol": "run",
+      "content": "def run(payload):\n    normalized = normalize_resume(payload)\n    return {'normalized': normalized, 'warnings': []}\n",
+      "priority": 7
+    },
+    {
+      "path": "tests/test_resume_pipeline.py",
+      "symbol": "test_warn_on_bad_email",
+      "content": "def test_warn_on_bad_email():\n    payload = {'email': 'invalid.example.com'}\n    result = run(payload)\n    assert result['warnings'] == ['invalid email']\n",
+      "priority": 8
+    }
+  ]
+}

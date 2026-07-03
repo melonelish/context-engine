@@ -1,0 +1,9 @@
+{
+  "mode": "logs",
+  "summary": "Detected error-oriented lines and preserved the traceback tail for fast debugging.",
+  "key_facts": [
+    "Input lines are normalized into one context item.",
+    "Repeated polling noise is listed under dropped_noise.",
+    "The final error line should remain visible in llm_ready_context."
+  ]
+}
