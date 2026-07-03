@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from context_engine.api import build_request_from_file
 from context_engine.budget import estimate_tokens, trim_text_to_budget
-from context_engine.cli import _request_from_code, _request_from_logs, _request_from_rag
 from context_engine.pipeline import compress_request
 from context_engine.schemas import BudgetPreset, CompressionRequest, SourceType
 
@@ -84,9 +84,9 @@ def _row(case: str, request: CompressionRequest, target_terms: list[str], note: 
 
 
 def main() -> None:
-    logs_request = _request_from_logs(ROOT / "examples" / "logs" / "sample.log", BudgetPreset.SMALL)
-    rag_request = _request_from_rag(ROOT / "examples" / "rag" / "sample.json", BudgetPreset.SMALL)
-    code_request = _request_from_code(ROOT / "examples" / "code" / "sample.json", BudgetPreset.SMALL)
+    logs_request = build_request_from_file(SourceType.LOGS, ROOT / "examples" / "logs" / "sample.log", BudgetPreset.SMALL)
+    rag_request = build_request_from_file(SourceType.RAG, ROOT / "examples" / "rag" / "sample.json", BudgetPreset.SMALL)
+    code_request = build_request_from_file(SourceType.CODE, ROOT / "examples" / "code" / "sample.json", BudgetPreset.SMALL)
 
     rows = [
         _row(
@@ -104,7 +104,7 @@ def main() -> None:
         _row(
             "code-hotspot-compression",
             code_request,
-            ["src/parsers.py::normalize_resume", "ValueError: email field missing '@' separator", "[LIKELY IMPACTED FILES]"],
+            ["src/parsers.py::normalize_resume", "ValueError: email field missing '@' separator", "[LIKELY HOTSPOT FILES]"],
             "Engine preserves issue, failure signal, and likely hotspot in one compact block.",
         ),
     ]
@@ -128,6 +128,7 @@ def main() -> None:
     lines.append("")
     for row in rows:
         lines.append(f"- `{row['case']}`: {row['note']}")
+    lines.append("- Token count is not the only success metric here. The code case shows why: the engine spends a few more tokens to keep the exact failure signal and hotspot structure that a repair agent needs.")
 
     OUT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(json.dumps(rows, indent=2))

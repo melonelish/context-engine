@@ -1,0 +1,30 @@
+{
+  "issue": "Resume normalization should warn on malformed emails instead of crashing the pipeline.",
+  "test_output": "RuntimeError: candidate profile missing normalized_email\nAssertionError: pipeline should keep warnings instead of raising",
+  "files": [
+    {
+      "path": "src/parsers.py",
+      "symbol": "normalize_resume",
+      "content": "def normalize_resume(candidate):\n    email = candidate.get('email', '').strip()\n    if '@' not in email:\n        raise RuntimeError('candidate profile missing normalized_email')\n    return {'normalized_email': email.lower()}\n",
+      "priority": 10
+    },
+    {
+      "path": "src/pipeline.py",
+      "symbol": "run",
+      "content": "def run(candidate):\n    normalized = normalize_resume(candidate)\n    return {'normalized': normalized, 'warnings': []}\n",
+      "priority": 8
+    },
+    {
+      "path": "tests/test_resume_pipeline.py",
+      "symbol": "test_warns_on_bad_email",
+      "content": "def test_warns_on_bad_email():\n    candidate = {'email': 'invalid.example.com'}\n    result = run(candidate)\n    assert result['warnings'] == ['invalid email']\n",
+      "priority": 9
+    },
+    {
+      "path": "src/ui/theme.py",
+      "symbol": "theme_button",
+      "content": "def theme_button():\n    return {'color': 'blue'}\n",
+      "priority": 1
+    }
+  ]
+}

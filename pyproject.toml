@@ -8,6 +8,22 @@ version = "0.1.0"
 description = "Task-aware context compression for logs, RAG, and coding workflows."
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "melonelish"},
+]
+keywords = ["llm", "rag", "mcp", "agents", "context-compression", "ai-coding"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
   "pydantic>=2.8,<3",
   "typer>=0.12,<1",
@@ -20,6 +36,11 @@ dev = [
 mcp = [
   "fastmcp>=3.4,<4",
 ]
+
+[project.urls]
+Homepage = "https://github.com/melonelish/context-engine"
+Repository = "https://github.com/melonelish/context-engine"
+Issues = "https://github.com/melonelish/context-engine/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

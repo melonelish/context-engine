@@ -4,22 +4,75 @@ Context Engine is a task-aware context compression engine for agents, RAG pipeli
 
 It turns noisy logs, retrieval chunks, and code context into tighter, structured inputs that are easier for an LLM to use well.
 
-## What It Supports
+## Release Status
 
-- `logs`: keep root cause lines, traceback tails, and repeated-noise summaries
-- `rag`: rank retrieved chunks against a user question and surface high-signal evidence
-- `code`: rank likely hotspot files around an issue or failing test and emit minimal fix context
+Current release target: `v0.1.0`
+
+This version is suitable for early external use, integration testing, and developer workflows. It is not yet a guaranteed fit for every real-world payload shape, but it is now documented, tested, and structured as a reusable package instead of a one-off demo.
+
+## What It Does
+
+- `logs`: extract likely root cause lines, traceback tails, and repeated-noise summaries
+- `rag`: rank retrieved chunks against a user question and separate high-signal evidence from low-signal evidence
+- `code`: rank hotspot files around an issue or failing test and emit minimal fix-oriented context
 - `mcp`: expose the same compression flow through one `compress_context` tool
+
+## Supported Now
+
+- Python `3.11` to `3.13`
+- plain text log input
+- JSON-based `rag` input with `question` and `chunks`
+- JSON-based `code` input with `issue`, optional `test_output`, and `files`
+- CLI usage for all three modes
+- MCP usage through one `compress_context` tool
+- structured success and error envelopes
+- schema version `1.0`
+
+## Stability Guards
+
+Current built-in safety limits:
+
+- max inline text size: `200000` characters
+- max structured list size: `64` items
+- max input file size: `2000000` bytes
+
+These guards exist to prevent common failure modes when strangers throw arbitrarily large payloads at the tool.
+
+## Not Supported Yet
+
+- binary inputs such as PDF, images, or office files
+- embedding-aware reranking
+- repository-scale dependency analysis
+- guarantees for every real-world data shape
+- long-term backward compatibility promises across future major versions
+
+## Install
+
+Recommended: use a fresh virtual environment.
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -e .[dev,mcp]
+```
 
 ## Quickstart
 
 ```powershell
-python -m pip install -e .[dev,mcp]
 python -m pytest -q
 python -m context_engine.cli --mode logs --input examples/logs/sample.log --budget medium
 python -m context_engine.cli --mode rag --input examples/rag/sample.json --budget medium
 python -m context_engine.cli --mode code --input examples/code/sample.json --budget medium
 ```
+
+## Output Contract
+
+CLI and MCP return structured envelopes:
+
+- success: `{ "ok": true, "result": ... }`
+- failure: `{ "ok": false, "error": { "error_code": ..., "message": ..., "hint": ..., "details": ... } }`
+
+That means bad inputs should fail clearly instead of dumping a raw traceback to end users.
 
 ## CLI Usage
 
@@ -41,76 +94,41 @@ The server exposes one tool:
 
 - `compress_context`: accepts `mode`, `budget`, and either raw log `content` or structured `payload` for `rag` and `code`
 
-Example tool inputs:
+Example failure response:
 
 ```json
 {
-  "mode": "logs",
-  "budget": "small",
-  "content": "ERROR parser failed\nTraceback (most recent call last):\nValueError: bad email"
-}
-```
-
-```json
-{
-  "mode": "rag",
-  "budget": "medium",
-  "payload": {
-    "question": "What caused the login timeout?",
-    "chunks": [
-      {"content": "Redis pool exhaustion caused the timeout.", "source": "incident.md", "score": 0.96}
-    ]
+  "ok": false,
+  "error": {
+    "error_code": "invalid_field",
+    "message": "Field 'chunks' must be a non-empty list.",
+    "hint": "Provide at least one item in 'chunks'."
   }
 }
 ```
 
-## Before / After
-
-Raw logs force an LLM to wade through polling noise, repeated fetch lines, and a full traceback. Context Engine extracts the likely root cause, keeps only the important error lines, and records repeated noise separately.
-
-Raw RAG results often mix relevant incident evidence with unrelated chunks. Context Engine reorders chunks around the question and marks lower-signal evidence so the answer path is easier to follow.
-
-Raw code context often arrives as a pile of files. Context Engine promotes the most likely hotspot, preserves the failure signal, and emits a compact fix-oriented block.
-
 ## Benchmarks
 
-Benchmark cases and results live in [benchmarks/benchmark_cases.md](D:/Context_Engine/benchmarks/benchmark_cases.md) and [benchmarks/benchmark_results.md](D:/Context_Engine/benchmarks/benchmark_results.md).
+Benchmark cases and results live in [benchmark_cases.md](/D:/Context_Engine/benchmarks/benchmark_cases.md:1) and [benchmark_results.md](/D:/Context_Engine/benchmarks/benchmark_results.md:1).
 
-Current headline from the sample set:
+Current behavior from the sample set:
 
 - `logs`: better than raw input and simple truncation because it keeps the root cause while dropping repeated noise
 - `rag`: better than plain chunk dumps because it ranks evidence around the question instead of preserving retrieval order
-- `code`: better than plain summaries because it preserves the issue, failure signal, hotspot file, and minimal fix context in one block
+- `code`: better than plain summaries because it preserves the issue, failure signal, hotspot file, and supporting context in one block
 
-## Project Layout
+## Development Checks
 
-```text
-src/context_engine/
-  schemas.py
-  budget.py
-  pipeline.py
-  compressors/
-    logs.py
-    rag.py
-    code.py
-  cli.py
-  mcp_server.py
-examples/
-  logs/
-  rag/
-  code/
-benchmarks/
-  benchmark_cases.md
-  benchmark_results.md
-  generate_benchmarks.py
-tests/
-  test_budget.py
-  test_schemas.py
-  test_pipeline.py
+```powershell
+python -m pytest -q
+python benchmarks/generate_benchmarks.py
 ```
 
-## Remaining Weak Spots
+CI runs on every push and pull request through GitHub Actions.
+
+## Current Limits
 
 - the RAG ranker is still heuristic and not embedding-aware
-- code ranking is lexical, so larger repos will need stronger symbol and dependency signals
-- the benchmark set is intentionally small and should expand before public launch
+- code ranking is still lexical and will need stronger structural signals
+- the benchmark set is still small and should grow before a broader production rollout
+- `fastmcp` should be installed in an isolated virtual environment to avoid dependency conflicts with unrelated global packages

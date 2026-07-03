@@ -6,6 +6,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+SCHEMA_VERSION = "1.0"
+
+
 class SourceType(str, Enum):
     LOGS = "logs"
     RAG = "rag"
@@ -39,6 +42,7 @@ class CompressionRequest(BaseModel):
     items: list[ContextItem] = Field(min_length=1)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    schema_version: str = SCHEMA_VERSION
 
 
 class CompressionResult(BaseModel):
@@ -49,3 +53,4 @@ class CompressionResult(BaseModel):
     llm_ready_context: str
     normalized_items: list[ContextItem] = Field(default_factory=list)
     stats: dict[str, Any] = Field(default_factory=dict)
+    schema_version: str = SCHEMA_VERSION

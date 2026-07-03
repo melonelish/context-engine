@@ -22,5 +22,13 @@ def test_mcp_compress_context_logs() -> None:
         content="INFO poll\nERROR parser failed\nTraceback (most recent call last):\nValueError: bad email\n",
     )
 
-    assert payload["mode"] == "logs"
-    assert "[ROOT CAUSE]" in payload["llm_ready_context"]
+    assert payload["ok"] is True
+    assert payload["result"]["mode"] == "logs"
+    assert "[ROOT CAUSE]" in payload["result"]["llm_ready_context"]
+
+
+def test_mcp_compress_context_returns_structured_error() -> None:
+    payload = compress_context(mode="rag", budget="small", payload={"question": "why"})
+
+    assert payload["ok"] is False
+    assert payload["error"]["error_code"] == "invalid_field"

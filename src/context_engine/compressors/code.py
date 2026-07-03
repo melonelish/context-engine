@@ -8,6 +8,8 @@ from ..schemas import CompressionRequest, CompressionResult, ContextItem, Source
 
 
 WORD_RE = re.compile(r"[A-Za-z0-9_]+")
+HOT_PATH_HINTS = ("test", "parser", "pipeline", "service", "validator")
+LOW_SIGNAL_PATH_HINTS = ("ui", "theme", "style", "color")
 
 
 def _keywords(text: str) -> set[str]:
@@ -16,11 +18,16 @@ def _keywords(text: str) -> set[str]:
 
 def _score_item(item: ContextItem, issue_terms: set[str], failure_terms: set[str]) -> tuple[float, int]:
     content_terms = _keywords(item.content)
-    meta_text = " ".join(str(item.metadata.get(key, "")) for key in ("path", "symbol", "kind"))
-    meta_terms = _keywords(meta_text)
+    path_text = str(item.metadata.get("path", ""))
+    symbol_text = str(item.metadata.get("symbol", ""))
+    meta_terms = _keywords(path_text + " " + symbol_text)
     overlap = len((content_terms | meta_terms) & issue_terms)
     failure_overlap = len((content_terms | meta_terms) & failure_terms)
-    total = (overlap * 2.5) + (failure_overlap * 1.5) + (item.priority * 0.2)
+    path_bonus = 1.2 if any(hint in path_text.lower() for hint in HOT_PATH_HINTS) else 0.0
+    raise_bonus = 1.5 if "raise " in item.content or "throw " in item.content else 0.0
+    assert_bonus = 1.0 if "assert " in item.content else 0.0
+    low_signal_penalty = 1.6 if any(hint in path_text.lower() for hint in LOW_SIGNAL_PATH_HINTS) else 0.0
+    total = (overlap * 2.5) + (failure_overlap * 1.7) + (item.priority * 0.2) + path_bonus + raise_bonus + assert_bonus - low_signal_penalty
     return total, overlap + failure_overlap
 
 
@@ -48,7 +55,8 @@ def compress_code(
         ranked.append((score, overlap, item))
 
     ranked.sort(key=lambda row: (row[0], row[1], row[2].priority), reverse=True)
-    hot_items = ranked[: min(3, len(ranked))]
+    hot_items = ranked[: min(2, len(ranked))]
+    supporting_items = ranked[min(2, len(ranked)) : min(3, len(ranked))]
     cold_items = ranked[min(3, len(ranked)) :]
 
     summary_target = _item_label(hot_items[0][2]) if hot_items else "no file context"
@@ -60,6 +68,7 @@ def compress_code(
         f"Issue: {issue}",
         f"Context files: {len(items)}",
         f"Likely hotspot: {summary_target}",
+        f"Supporting files: {len(supporting_items)}",
     ]
     if test_output:
         key_facts.append(f"Failure signal captured: {test_output.splitlines()[0]}")
@@ -73,12 +82,17 @@ def compress_code(
     if test_output:
         context_lines.extend(["", "[TEST OUTPUT]", test_output])
 
-    context_lines.extend(["", "[LIKELY IMPACTED FILES]"])
+    context_lines.extend(["", "[LIKELY HOTSPOT FILES]"])
     for score, overlap, item in hot_items:
         context_lines.append(f"- {_item_label(item)} | score={score:.2f} | overlap={overlap}")
 
+    if supporting_items:
+        context_lines.extend(["", "[SUPPORTING FILES]"])
+        for score, overlap, item in supporting_items:
+            context_lines.append(f"- {_item_label(item)} | score={score:.2f} | overlap={overlap}")
+
     context_lines.extend(["", "[MINIMAL FIX CONTEXT]"])
-    for _, _, item in hot_items:
+    for _, _, item in hot_items + supporting_items:
         context_lines.append(f"## {_item_label(item)}")
         context_lines.append(item.content.strip())
 
@@ -88,6 +102,7 @@ def compress_code(
     stats.update(
         {
             "hot_items": len(hot_items),
+            "supporting_items": len(supporting_items),
             "cold_items": len(cold_items),
             "has_test_output": bool(test_output),
         }

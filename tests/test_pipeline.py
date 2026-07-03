@@ -1,5 +1,12 @@
+import json
+from pathlib import Path
+
+from context_engine.api import build_request_from_inputs
 from context_engine.pipeline import compress_request
 from context_engine.schemas import BudgetConfig, CompressionRequest, ContextItem, SourceType
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def test_logs_pipeline_smoke() -> None:
@@ -19,6 +26,17 @@ def test_logs_pipeline_smoke() -> None:
     assert result.mode is SourceType.LOGS
     assert "root cause" in result.summary.lower()
     assert "ValueError: bad email" in result.llm_ready_context
+
+
+def test_logs_pipeline_handles_noisy_mixed_logs() -> None:
+    content = (FIXTURES / "logs" / "mixed_runtime.log").read_text(encoding="utf-8")
+    request = build_request_from_inputs(mode="logs", budget="medium", content=content)
+
+    result = compress_request(request)
+
+    assert "candidate profile missing normalized_email" in result.llm_ready_context
+    assert "[NOISE REDUCED]" in result.llm_ready_context
+    assert result.stats["repeated_noise_groups"] >= 1
 
 
 def test_rag_pipeline_smoke() -> None:
@@ -44,8 +62,20 @@ def test_rag_pipeline_smoke() -> None:
     result = compress_request(request)
 
     assert result.mode is SourceType.RAG
-    assert "high-signal chunks" in result.summary.lower()
+    assert "useful chunks" in result.summary.lower()
     assert "incident.md" in result.llm_ready_context
+
+
+def test_rag_pipeline_demotes_unrelated_chunks() -> None:
+    payload = json.loads((FIXTURES / "rag" / "incident_mixed.json").read_text(encoding="utf-8"))
+    request = build_request_from_inputs(mode="rag", budget="medium", payload=payload)
+
+    result = compress_request(request)
+
+    assert "incident-review.md" in result.llm_ready_context
+    assert "mitigation.md" in result.llm_ready_context
+    assert "analytics.md" in " ".join(result.dropped_noise)
+    assert result.stats["low_signal_chunks"] >= 1
 
 
 def test_code_pipeline_smoke() -> None:
@@ -76,3 +106,15 @@ def test_code_pipeline_smoke() -> None:
     assert result.mode is SourceType.CODE
     assert "hotspot" in result.summary.lower()
     assert "src/parsers.py::normalize_resume" in result.llm_ready_context
+
+
+def test_code_pipeline_prioritizes_hotspot_and_supporting_files() -> None:
+    payload = json.loads((FIXTURES / "code" / "resume_failure.json").read_text(encoding="utf-8"))
+    request = build_request_from_inputs(mode="code", budget="medium", payload=payload)
+
+    result = compress_request(request)
+
+    assert "[LIKELY HOTSPOT FILES]" in result.llm_ready_context
+    assert "src/parsers.py::normalize_resume" in result.llm_ready_context
+    assert "tests/test_resume_pipeline.py::test_warns_on_bad_email" in result.llm_ready_context
+    assert any("src/ui/theme.py" in item for item in result.dropped_noise)

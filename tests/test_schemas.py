@@ -1,4 +1,4 @@
-from context_engine.schemas import CompressionRequest, ContextItem, SourceType
+from context_engine.schemas import CompressionRequest, ContextItem, SCHEMA_VERSION, SourceType
 
 
 def test_request_accepts_request_metadata() -> None:
@@ -10,3 +10,4 @@ def test_request_accepts_request_metadata() -> None:
 
     assert request.metadata["question"] == "Why did login fail?"
     assert request.items[0].source_type is SourceType.RAG
+    assert request.schema_version == SCHEMA_VERSION

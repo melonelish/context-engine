@@ -1,0 +1,13 @@
+2026-07-04 10:00:01 INFO worker heartbeat queue=resume-sync
+2026-07-04 10:00:02 INFO worker heartbeat queue=resume-sync
+2026-07-04 10:00:03 INFO poll queue=resume-sync status=empty
+2026-07-04 10:00:04 WARN retrying in 5 seconds
+2026-07-04 10:00:05 ERROR resume pipeline failed stage=normalize candidate=42
+Traceback (most recent call last):
+  File "/app/pipeline.py", line 80, in run
+    normalized = normalize_resume(candidate)
+  File "/app/parsers.py", line 22, in normalize_resume
+    raise RuntimeError("candidate profile missing normalized_email")
+RuntimeError: candidate profile missing normalized_email
+2026-07-04 10:00:06 INFO worker heartbeat queue=resume-sync
+系统异常: 简历标准化失败

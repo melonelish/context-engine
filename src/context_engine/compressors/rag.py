@@ -31,6 +31,8 @@ STOPWORDS = {
     "with",
     "users",
 }
+NEGATIVE_HINTS = {"dashboard", "monthly", "analytics", "deleted", "ui", "color", "theme", "button", "design"}
+SUPPORTIVE_HINTS = {"mitigation", "incident", "rollback", "retry", "redis", "timeout", "pool", "queue", "sso"}
 
 
 def _keywords(text: str) -> set[str]:
@@ -41,13 +43,18 @@ def _keywords(text: str) -> set[str]:
     }
 
 
-def _score_chunk(item: ContextItem, question_terms: set[str]) -> tuple[float, int]:
+def _score_chunk(item: ContextItem, question_terms: set[str]) -> tuple[float, int, int]:
     chunk_terms = _keywords(item.content)
-    overlap = len(chunk_terms & question_terms)
+    overlap_terms = chunk_terms & question_terms
+    overlap = len(overlap_terms)
     source_score = float(item.metadata.get("score", 0.0) or 0.0)
     priority_boost = item.priority * 0.2
-    total = (overlap * 2.0) + source_score + priority_boost
-    return total, overlap
+    supportive_count = sum(1 for token in chunk_terms if token in SUPPORTIVE_HINTS)
+    negative_count = sum(1 for token in chunk_terms if token in NEGATIVE_HINTS)
+    supportive_bonus = supportive_count * 0.5
+    negative_penalty = negative_count * 1.5
+    total = (overlap * 2.4) + source_score + priority_boost + supportive_bonus - negative_penalty
+    return total, overlap, negative_count
 
 
 def _label_for_item(item: ContextItem) -> str:
@@ -66,47 +73,55 @@ def compress_rag(
     question = str(request.metadata.get("question", "")).strip() or "No question provided."
     question_terms = _keywords(question)
 
-    ranked: list[tuple[float, int, ContextItem]] = []
+    ranked: list[tuple[float, int, int, ContextItem]] = []
     for item in items:
-        score, overlap = _score_chunk(item, question_terms)
-        ranked.append((score, overlap, item))
+        score, overlap, negative_count = _score_chunk(item, question_terms)
+        ranked.append((score, overlap, negative_count, item))
 
-    ranked.sort(key=lambda row: (row[0], row[1], row[2].priority), reverse=True)
+    ranked.sort(key=lambda row: (row[0], row[1], -row[2], row[3].priority), reverse=True)
 
-    high_signal: list[tuple[float, int, ContextItem]] = []
-    low_signal: list[tuple[float, int, ContextItem]] = []
+    high_signal: list[tuple[float, int, int, ContextItem]] = []
+    supportive_signal: list[tuple[float, int, int, ContextItem]] = []
+    low_signal: list[tuple[float, int, int, ContextItem]] = []
     for index, row in enumerate(ranked):
-        _, overlap, item = row
+        score, overlap, negative_count, item = row
         source_score = float(item.metadata.get("score", 0.0) or 0.0)
-        if overlap > 0 or source_score >= 0.75 or index == 0:
+        if negative_count >= 2 and source_score < 0.7:
+            low_signal.append(row)
+        elif overlap >= 2 or score >= 4.0:
             high_signal.append(row)
+        elif (overlap > 0 and negative_count == 0) or source_score >= 0.82 or (index == 0 and negative_count == 0):
+            supportive_signal.append(row)
         else:
             low_signal.append(row)
 
-    top_sources = [_label_for_item(item) for _, _, item in high_signal[:3]]
+    top_sources = [_label_for_item(item) for _, _, _, item in (high_signal + supportive_signal)[:3]]
     evidence_lines = []
-    for _, overlap, item in high_signal[:4]:
-        label = _label_for_item(item)
-        evidence_lines.append(f"- {label} | overlap={overlap}")
-        evidence_lines.append(item.content.strip())
+    for bucket_name, bucket in (("HIGH", high_signal[:3]), ("SUPPORT", supportive_signal[:2])):
+        for _, overlap, _, item in bucket:
+            label = _label_for_item(item)
+            evidence_lines.append(f"- {bucket_name} | {label} | overlap={overlap}")
+            evidence_lines.append(item.content.strip())
 
     lower_signal_lines = []
-    for _, overlap, item in low_signal[:3]:
+    for _, overlap, _, item in low_signal[:3]:
         label = _label_for_item(item)
         lower_signal_lines.append(f"- {label} | overlap={overlap}")
         lower_signal_lines.append(item.content.strip())
 
+    selected_count = len(high_signal) + len(supportive_signal)
     summary = (
-        f"Selected {len(high_signal)} high-signal chunks out of {len(items)} retrieved chunks "
+        f"Selected {selected_count} useful chunks out of {len(items)} retrieved chunks "
         f"for question '{question}'."
     )
     key_facts = [
         f"Question: {question}",
         f"Retrieved chunks: {len(items)}",
         f"High-signal chunks: {len(high_signal)}",
+        f"Supportive chunks: {len(supportive_signal)}",
         f"Top sources: {', '.join(top_sources) if top_sources else 'none'}",
     ]
-    dropped_noise = [f"Low-signal chunk: {_label_for_item(item)}" for _, _, item in low_signal]
+    dropped_noise = [f"Low-signal chunk: {_label_for_item(item)}" for _, _, _, item in low_signal]
 
     sections = [
         "[QUESTION]",
@@ -125,6 +140,7 @@ def compress_rag(
         {
             "question_terms": len(question_terms),
             "high_signal_chunks": len(high_signal),
+            "supportive_chunks": len(supportive_signal),
             "low_signal_chunks": len(low_signal),
         }
     )
