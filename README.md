@@ -1,5 +1,7 @@
 # Context Engine - 面向 Agent / RAG / AI Coding 的上下文压缩引擎
 
+<!-- mcp-name: io.github.melonelish/context-engine -->
+
 <p align="center">
   <strong>把噪声日志、检索片段和代码上下文，压缩成大模型更容易使用的高信号输入。</strong>
 </p>
@@ -185,6 +187,13 @@ python -m pytest -q
 python -m context_engine.cli --mode logs --input examples/logs/sample.log --budget medium
 python -m context_engine.cli --mode rag --input examples/rag/sample.json --budget medium
 python -m context_engine.cli --mode code --input examples/code/sample.json --budget medium
+```
+
+从 PyPI 安装发布包：
+
+```powershell
+python -m pip install "melonelish-context-engine[mcp]"
+context-engine-mcp
 ```
 
 ---

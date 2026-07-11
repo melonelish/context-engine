@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.melonelish/context-engine",
+  "title": "Context Engine",
+  "description": "Compress logs, retrieval chunks, and code context into structured LLM-ready signal.",
+  "repository": {
+    "url": "https://github.com/melonelish/context-engine",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "melonelish-context-engine",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
