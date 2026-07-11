@@ -17,6 +17,14 @@
   <img src="https://img.shields.io/badge/License-MIT-black?style=flat-square" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/melonelish-context-engine/">PyPI</a>
+  ·
+  <a href="https://github.com/melonelish/context-engine">GitHub</a>
+  ·
+  <a href="https://registry.modelcontextprotocol.io/v0/servers/io.github.melonelish/context-engine">MCP Registry</a>
+</p>
+
 ---
 
 ## 为什么需要 Context Engine
@@ -180,20 +188,19 @@ python -m venv .venv
 python -m pip install -e .[dev,mcp]
 ```
 
-### 运行示例
-
-```powershell
-python -m pytest -q
-python -m context_engine.cli --mode logs --input examples/logs/sample.log --budget medium
-python -m context_engine.cli --mode rag --input examples/rag/sample.json --budget medium
-python -m context_engine.cli --mode code --input examples/code/sample.json --budget medium
-```
-
 从 PyPI 安装发布包：
 
 ```powershell
 python -m pip install "melonelish-context-engine[mcp]"
-context-engine-mcp
+```
+
+### 运行示例
+
+```powershell
+python -m pytest -q
+context-engine --mode logs --input examples/logs/sample.log --budget medium
+context-engine --mode rag --input examples/rag/sample.json --budget medium
+context-engine --mode code --input examples/code/sample.json --budget medium
 ```
 
 ---
@@ -201,9 +208,9 @@ context-engine-mcp
 ## CLI 使用
 
 ```powershell
-python -m context_engine.cli --mode logs --input examples/logs/sample.log --budget small
-python -m context_engine.cli --mode rag --input examples/rag/sample.json --budget medium
-python -m context_engine.cli --mode code --input examples/code/sample.json --budget large
+context-engine --mode logs --input examples/logs/sample.log --budget small
+context-engine --mode rag --input examples/rag/sample.json --budget medium
+context-engine --mode code --input examples/code/sample.json --budget large
 ```
 
 ### 输入格式
@@ -253,7 +260,7 @@ ValueError: missing customer_id
 通过 stdio 启动 MCP Server：
 
 ```powershell
-python -m context_engine.mcp_server
+context-engine-mcp
 ```
 
 当前暴露一个工具：
@@ -359,7 +366,12 @@ CI 会在 push 和 pull request 时运行安装、测试和 benchmark 生成检�
 
 当前版本目标：`v0.1.0`
 
-这个版本适合早期外部试用、集成测试和开发者工作流验证。它已经具备可复用包结构、测试和文档，但仍然是范围明确的早期 beta。
+已发布渠道：
+
+- PyPI: https://pypi.org/project/melonelish-context-engine/
+- MCP Registry: https://registry.modelcontextprotocol.io/v0/servers/io.github.melonelish/context-engine
+
+这个版本适合早期外部试用、集成测试和开发者工作流验证。它已经具备可复用包结构、测试、文档，以及可直接安装的 PyPI / MCP Registry 发布入口，但仍然是范围明确的早期 beta。
 
 ---
 
